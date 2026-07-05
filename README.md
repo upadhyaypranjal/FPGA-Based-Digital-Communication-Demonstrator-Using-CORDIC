@@ -30,7 +30,7 @@ The hardware-generated trigonometric values are used to produce **Gray-coded BPS
 The following diagram illustrates the complete system architecture and data flow of the FPGA-Based CORDIC Digital Communication Demonstrator.
 
 <p align="center">
-  <img src="images/system_architecture.png" alt="FPGA-Based CORDIC Digital Communication Demonstrator Architecture" width="900">
+  <img src="images/architecture/system_architecture.png" alt="FPGA-Based CORDIC Digital Communication Demonstrator Architecture" width="900">
 </p>
 
 The Python Host GUI communicates with the Vicharak Shrike Lite board through a USB serial connection. The on-board RP2040 acts as a communication bridge, forwarding commands to the Renesas ForgeFPGA SLG47910 over the internal SPI interface. The FPGA performs quadrant reduction, CORDIC rotation, SIN/COS computation, and Linear Divider-based TAN computation entirely in hardware. The computed results are then transferred back through the RP2040 to the GUI, where they are visualized as modulation waveforms, I/Q constellation points, and processing results for both BPSK and QPSK communication modes.
