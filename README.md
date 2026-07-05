@@ -8,31 +8,11 @@
 
 ## Overview
 
-Digital communication systems — from Wi-Fi to satellite links to 5G — are built on a deceptively simple mathematical foundation: rotating a signal's phase to encode information, using nothing more than **sine and cosine**. Every phase-shift-keyed modulation scheme maps a bit or a group of bits onto a point on a circle, and that point is defined entirely by `(cos θ, sin θ)`.
+This project presents an **FPGA-Based CORDIC Digital Communication Demonstrator** implementing **BPSK** and **QPSK** modulation on the **Vicharak Shrike Lite** development board featuring the **Renesas ForgeFPGA SLG47910**. The system computes **sine**, **cosine**, and **tangent** entirely in hardware using the **CORDIC (COordinate Rotation DIgital Computer)** algorithm, eliminating the need for hardware multipliers.
 
-Most educational projects teach this concept using `numpy.sin()` and `numpy.cos()` in a Jupyter notebook. This project deliberately does **not** do that. Instead, it asks and answers a harder, more interesting question:
+The implementation employs **16-bit signed fixed-point (Q1.14)** arithmetic with an **8-iteration CORDIC rotation engine** for sine and cosine generation, followed by a **6-iteration linear divider** for tangent computation. The FPGA performs all mathematical processing, while the on-board RP2040 acts solely as a USB-to-SPI communication bridge between the Python GUI and the FPGA.
 
-> *What does it actually take to compute sine, cosine, and tangent using only addition, subtraction, and bit-shifts — on a real, resource-constrained FPGA — and then use those hardware-computed values to build a real modulator?*
-
-The answer is the **CORDIC algorithm** (COordinate Rotation DIgital Computer), the same class of algorithm used inside real-world DSP chips, software-defined radios, and DDS (Direct Digital Synthesis) hardware, precisely because it avoids multipliers entirely. On a small FPGA like the SLG47910 — which has no dedicated multiplier blocks and a tight CLB budget — CORDIC isn't an academic curiosity, it's the *only* practical way to get trigonometric functions in hardware.
-
-### Why FPGA implementation matters
-
-A microcontroller computing `sin()` calls a library function that ultimately reduces to a polynomial or table approximation running on a general-purpose ALU, sequentially, at clock speeds bottlenecked by fetch-decode-execute overhead. An FPGA implementation, by contrast, is a purpose-built circuit: every clock cycle, the same small set of adders and shifters is doing exactly the useful work it was wired to do, with deterministic, cycle-accurate latency.
-
-### Why digital communications need SIN and COS
-
-Every phase-shift-keying (PSK) scheme transmits information by placing a symbol at a specific phase angle `θ` on the unit circle. To actually generate or demodulate that waveform, a radio needs the **I/Q components** `(cos θ, sin θ)` of that angle. This project makes that dependency explicit and tangible: the same CORDIC core that answers "what is sin(37°)?" is the core that generates the BPSK and QPSK symbols later in the pipeline.
-
-### Why this project is educational
-
-This repository is designed to be read, not just run. It intentionally exposes:
-- The exact fixed-point format used at every stage
-- The exact number of CORDIC iterations and why that number was chosen
-- The exact resource trade-offs made to fit inside a **140-CLB** FPGA
-
-If you are learning CORDIC, fixed-point arithmetic, SPI protocol design, or digital modulation, this project is meant to be a working reference you can step through end-to-end.
-
+The hardware-generated trigonometric values are used to produce **Gray-coded BPSK** and **QPSK** symbols, which are visualized in the desktop GUI through waveform plots, constellation diagrams, and real-time processing views. The project demonstrates the complete signal processing chain from input data to digital modulation while operating within the resource constraints of the **140-CLB ForgeFPGA**.
 ---
 
 ## Hardware Used
@@ -49,21 +29,22 @@ If you are learning CORDIC, fixed-point arithmetic, SPI protocol design, or digi
 The following diagram illustrates the complete system architecture and data flow of the FPGA-Based CORDIC Digital Communication Demonstrator.
 
 <p align="center">
-  <img src="images/system_architecture.png" alt="FPGA-Based CORDIC Digital Communication Demonstrator Architecture" width="9000">
+  <img src="images/system_architecture.png" alt="FPGA-Based CORDIC Digital Communication Demonstrator Architecture" width="900">
 </p>
 
 The Python Host GUI communicates with the Vicharak Shrike Lite board through a USB serial connection. The on-board RP2040 acts as a communication bridge, forwarding commands to the Renesas ForgeFPGA SLG47910 over the internal SPI interface. The FPGA performs quadrant reduction, CORDIC rotation, SIN/COS computation, and Linear Divider-based TAN computation entirely in hardware. The computed results are then transferred back through the RP2040 to the GUI, where they are visualized as modulation waveforms, I/Q constellation points, and processing results for both BPSK and QPSK communication modes.
+
 ---
 
 ## The CORDIC Algorithm
 
-CORDIC computes rotations of a 2D vector using only **shifts and additions**, entirely avoiding multipliers — which is precisely why it was chosen for the SLG47910, a device with no dedicated multiplier hardware.
+The **CORDIC (COordinate Rotation DIgital Computer)** algorithm computes trigonometric functions using only **shift**, **add**, and **subtract** operations, making it well suited for FPGA implementations that lack dedicated hardware multipliers. This project implements the **Rotation Mode CORDIC** algorithm to generate **SIN** and **COS**, followed by a **Linear CORDIC Divider** to compute **TAN**.
 
-### Circular Rotation Mode
+### Rotation Equations
 
-Starting from a vector `(x₀, y₀) = (K, 0)` and a target angle `z₀`, each iteration `i` applies:
+For each iteration *i*, the vector is rotated according to the sign of the residual angle:
 
-```
+```text
 if zᵢ ≥ 0:
     xᵢ₊₁ = xᵢ − (yᵢ >> i)
     yᵢ₊₁ = yᵢ + (xᵢ >> i)
@@ -74,31 +55,27 @@ else:
     zᵢ₊₁ = zᵢ + atan(2⁻ⁱ)
 ```
 
-After `n` iterations, `xₙ → K · cos(z₀)` and `yₙ → K · sin(z₀)`, where `K` is the accumulated CORDIC gain.
+After **8 iterations**, the resulting vector components correspond to the hardware-generated **cosine** and **sine** values of the input angle.
 
-### Why Quadrant Reduction Comes First
+### Quadrant Reduction
 
-CORDIC rotation only converges reliably over roughly `[-90°, +90°]`. Real messages need to be modulated across the full 0°–360° range, so the angle-reduction logic reduces *any* input angle down into `[0°, 90°]` first, recording which quadrant it came from as two sign bits. This is what allows the system to correctly compute values for angles like `315°`, `-720°`, or angles far outside a single revolution — the reduction happens before CORDIC ever sees the angle.
+The CORDIC engine operates on angles within the first quadrant. Therefore, every input angle is first processed by the **Quadrant Reduction** block, which maps it into the required operating range while recording the original quadrant. After the CORDIC computation, the appropriate sign corrections are applied to produce the final SIN and COS values.
 
-### The atan Lookup Table
+### Arctangent Lookup Table
 
-Each iteration needs the constant `atan(2⁻ⁱ)` for that specific iteration index. Rather than computing this at runtime (which would require a divider and an arctangent — the very things CORDIC exists to avoid), these constants are precomputed offline and stored in a tiny combinational lookup table indexed by the iteration counter.
+Each CORDIC iteration requires the constant **atan(2⁻ⁱ)**. These values are precomputed and stored in a small lookup table (`atan_rom.v`), eliminating the need for runtime trigonometric calculations.
 
-### CORDIC Gain
+### CORDIC Gain Compensation
 
-Each rotation step doesn't preserve vector length — it scales it by `√(1 + 2⁻²ⁱ)`. The product of these scale factors over all iterations converges to a constant, `K ≈ 0.6072529`. Rather than dividing by this gain after the fact (another division!), the vector is simply initialized at `x₀ = K` instead of `x₀ = 1`, so the gain is pre-compensated for free.
+Successive CORDIC rotations introduce a constant scaling factor. To compensate for this gain, the initial vector is pre-scaled by the inverse CORDIC gain (**K ≈ 0.6072529**), producing correctly scaled sine and cosine outputs without requiring additional hardware.
 
-### Fixed-Point Arithmetic and the Q1.14 Format
+### Fixed-Point Representation
 
-All values that cross the SPI boundary use **Q1.14 fixed-point**: a 16-bit signed word with 1 integer bit and 14 fractional bits, giving a representable range of roughly `[-2.0, +1.99994]` with a resolution of `1/16384 ≈ 6.1×10⁻⁵`. This single, consistent format is what lets the GUI, the RP2040 firmware, and every Verilog module agree on how to interpret a raw 16-bit integer without any additional metadata.
+The design uses **16-bit signed Q1.14 fixed-point arithmetic** for all external inputs and outputs. To reduce FPGA resource utilization, the internal CORDIC computations operate using a reduced **Q1.8 fixed-point format**, while the final results are converted back to **Q1.14** before transmission over SPI.
 
-> **Resource-driven precision trade-off:** to fit the CORDIC and its TAN divider on the 140-CLB SLG47910, the internal rotation math runs in a narrower format than the external Q1.14 interface — angles are truncated on the way in and rescaled on the way out via free bit-slices, so the SPI protocol and GUI never see the difference, only a modest reduction in decimal precision.
+### Tangent Computation
 
-### Why CORDIC Instead of Multipliers
-
-A direct Taylor-series or polynomial approximation of sine/cosine needs several multiply-accumulate operations per evaluation. The SLG47910 has zero dedicated multiplier blocks — implementing multiplication in raw LUT fabric is extremely expensive in CLBs. CORDIC sidesteps this entirely: every operation in the algorithm is a shift (free — just wire routing) or an add/subtract (cheap, one adder per operand). This is the same reason CORDIC is used in real DDS chips and software-defined radio front ends.
-
-TAN is computed the same way, in hardware, using a second linear-CORDIC divider stage rather than a conventional divider — never in Python, and never via `math.tan()`.
+The tangent value is computed entirely in hardware using the **Linear CORDIC Divider** (`linear_divide.v`). The divider takes the hardware-generated SIN and COS values as inputs and performs a **6-iteration** shift-add division algorithm to produce the final TAN output. No software-based trigonometric functions or hardware divider IP are used.
 
 ---
 
@@ -256,29 +233,8 @@ BPSK constellations show two cleanly separated points at 0° and 180°; QPSK con
 
 ---
 
-## Future Enhancements
 
-- [ ] **8PSK** — extend the phase mapper to 3 bits/symbol
-- [ ] **16QAM** — combine phase and amplitude modulation
-- [ ] **DDS (Direct Digital Synthesis)** — continuous carrier generation directly from the CORDIC core
-- [ ] **OFDM** — multi-carrier transmission built on top of the existing symbol mapper
-- [ ] **UART interface** — an alternative to SPI for host communication
-- [ ] **Hardware acceleration** — pipelined, multi-symbol-per-cycle CORDIC for higher throughput
-- [ ] **Real DAC output** — drive an actual analog waveform out of the board instead of only visualizing it in software
+## Developed by
 
----
-
-## Author
-
-<div align="center">
-
-**Pranjal Upadhyay**
-
-[![Portfolio](https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=About.me&logoColor=white)](https://your-portfolio-link.example.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/your-linkedin)
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/your-username)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:your.email@example.com)
-
-</div>
-
-> Update the portfolio, LinkedIn, GitHub, and email links above before publishing.
+**Pranjal Upadhyay**  
+<sub>Indian Institute of Information Technology, Design and Manufacturing, Kurnool</sub>
