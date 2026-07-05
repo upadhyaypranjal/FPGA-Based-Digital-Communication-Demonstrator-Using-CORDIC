@@ -13,6 +13,7 @@ This project presents an **FPGA-Based CORDIC Digital Communication Demonstrator*
 The implementation employs **16-bit signed fixed-point (Q1.14)** arithmetic with an **8-iteration CORDIC rotation engine** for sine and cosine generation, followed by a **6-iteration linear divider** for tangent computation. The FPGA performs all mathematical processing, while the on-board RP2040 acts solely as a USB-to-SPI communication bridge between the Python GUI and the FPGA.
 
 The hardware-generated trigonometric values are used to produce **Gray-coded BPSK** and **QPSK** symbols, which are visualized in the desktop GUI through waveform plots, constellation diagrams, and real-time processing views. The project demonstrates the complete signal processing chain from input data to digital modulation while operating within the resource constraints of the **140-CLB ForgeFPGA**.
+
 ---
 
 ## Hardware Used
@@ -33,6 +34,36 @@ The following diagram illustrates the complete system architecture and data flow
 </p>
 
 The Python Host GUI communicates with the Vicharak Shrike Lite board through a USB serial connection. The on-board RP2040 acts as a communication bridge, forwarding commands to the Renesas ForgeFPGA SLG47910 over the internal SPI interface. The FPGA performs quadrant reduction, CORDIC rotation, SIN/COS computation, and Linear Divider-based TAN computation entirely in hardware. The computed results are then transferred back through the RP2040 to the GUI, where they are visualized as modulation waveforms, I/Q constellation points, and processing results for both BPSK and QPSK communication modes.
+
+---
+
+## Hardware Setup
+
+No external hardware connections are required to use the demonstrator. The **Vicharak Shrike Lite** integrates both the **Renesas ForgeFPGA SLG47910** and the **RP2040** on a single development board. Communication between the desktop GUI and the FPGA is performed through the onboard RP2040 over USB Serial and SPI.
+
+### On-board FPGA Connections
+
+| FPGA Port | Direction | Board Signal | Description |
+|-----------|-----------|--------------|-------------|
+| `clk` | Input | Internal Oscillator | System clock for FPGA logic |
+| `clk_en` | Output | Oscillator Enable | Enables the onboard oscillator |
+| `rst_n` | Input | Reset | Active-low system reset |
+| `led` | Output | User LED | Status indication |
+| `spi_sck` | Input | SPI Clock | SPI clock from RP2040 |
+| `spi_mosi` | Input | SPI MOSI | Command and angle data from RP2040 |
+| `spi_miso` | Output | SPI MISO | SIN, COS and TAN data returned to RP2040 |
+| `spi_miso_en` | Output | SPI Output Enable | Enables FPGA SPI output driver |
+| `spi_ss_n` | Input | SPI Chip Select | Active-low SPI slave select |
+
+### Communication Interface
+
+| Interface | Function |
+|-----------|----------|
+| USB Serial | Host PC GUI ↔ RP2040 communication |
+| SPI | RP2040 ↔ ForgeFPGA communication |
+| Internal Oscillator | FPGA system clock |
+
+> **Note:** All communication between the Host PC and the FPGA is performed through the onboard RP2040. No additional wiring or external hardware is required for normal operation.
 
 ---
 
@@ -158,24 +189,6 @@ A minimal, byte-oriented command set drives the entire system. Every command is 
 | `0xA7` | FPGA to RP2040 | 1 byte | COS result, high byte |
 | `0xA8` | FPGA to RP2040 | 1 byte | TAN result, low byte |
 | `0xA9` | FPGA to RP2040 | 1 byte | TAN result, high byte |
-
-<details>
-<summary><strong>Click to expand: example transaction sequence</strong></summary>
-
-<br/>
-
-```text
-1. RP2040 sends: 0xA1, angle_byte0, angle_byte1, angle_byte2, angle_byte3
-2. RP2040 polls: 0xA2  → repeat until LSB == 1
-3. RP2040 reads: 0xA3 (sin_low), 0xA4 (sin_high)
-4. RP2040 reads: 0xA6 (cos_low), 0xA7 (cos_high)
-5. RP2040 polls: 0xA5  → repeat until LSB == 1
-6. RP2040 reads: 0xA8 (tan_low), 0xA9 (tan_high)
-```
-
-All 16-bit results are two's-complement Q1.14 fixed-point; the GUI/firmware converts them back to floating-point by dividing by `16384.0`.
-
-</details>
 
 ---
 
