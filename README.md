@@ -227,14 +227,32 @@ python gui/main.py
 
 ## Running the Project
 
-1. **Power on** the Vicharak Shrike Lite and connect it to your computer via USB.
-2. **Launch the GUI** and select the correct serial port.
-3. **Choose a modulation scheme** — BPSK or QPSK.
-4. **Type a message** to transmit.
-5. Watch the message get encoded to ASCII, binary, phase angles, and Q1.14 fixed-point values.
-6. Observe the FPGA converge on SIN, COS, and TAN for each symbol.
-7. View the resulting constellation diagram and waveform as they populate in real time.
-8. Optionally, send arbitrary angles directly and compare FPGA output against the software reference value.
+The project can be used in **two different modes**.
+
+### Option 1 — CORDIC Calculator (Thonny)
+
+1. Connect the **Vicharak Shrike Lite** to your computer via USB.
+2. Upload and run `firmware/cordic.py` using Thonny.
+3. The script automatically programs the FPGA using `bitstream/FPGA_bitstream_MCU.bin`.
+4. Enter the desired angle in degrees or radians.
+5. View the FPGA-generated **SIN**, **COS**, and **TAN** values in the Thonny Shell alongside the corresponding software reference values.
+
+---
+
+### Option 2 — Digital Communication Demonstrator (Host GUI)
+
+1. Connect the **Vicharak Shrike Lite** to your computer via USB.
+2. Download and launch the latest Host GUI executable from the **Releases** section of this repository.
+3. Select the appropriate COM port and establish the connection.
+4. Choose the desired modulation scheme (**BPSK** or **QPSK**).
+5. Select the input mode (**Binary**, **ASCII**, or **Random Data**).
+6. Start the transmission.
+7. Observe the FPGA-generated results through:
+   - Baseband and Modulated Waveforms
+   - Constellation Diagram
+   - Live Symbol Statistics
+   - FPGA-generated SIN, COS, TAN, and I/Q values
+   - Data Table and Communication Monitor
 
 ---
 
