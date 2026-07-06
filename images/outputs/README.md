@@ -208,33 +208,77 @@ Location
 thonny_shell_outputs/
 ```
 
-Contains console outputs captured from the firmware execution using Thonny.
+This folder contains console outputs captured from the RP2040 firmware while interacting directly with the FPGA through the Thonny IDE.
 
-These screenshots verify communication between the RP2040 firmware and the FPGA.
+These screenshots verify the complete hardware communication pipeline without using the graphical interface.
 
-Displayed information includes
+---
 
-- Angle transmitted
-- SIN result
-- COS result
-- TAN result
-- Execution timing
-- Hardware verification logs
+## Degree Mode
 
-These outputs demonstrate successful SPI communication and FPGA CORDIC computation before GUI integration.
+Image
+
+```
+output1
+```
+
+Demonstrates FPGA CORDIC execution using degree-based angle inputs.
+
+Example test cases include
+
+- 30°
+- 215°
+
+Each execution displays
+
+- Selected angle mode
+- Input angle
+- FPGA-computed SIN
+- FPGA-computed COS
+- FPGA-computed TAN
+- Expected mathematical values
+- Direct numerical comparison
+
+This output verifies correct FPGA computation over multiple quadrants using degree inputs.
+
+---
+
+## Radian Mode
+
+Image
+
+```
+output2
+```
+
+Demonstrates FPGA CORDIC execution using radian-based angle inputs.
+
+Example test cases include
+
+- 0.2617 rad
+- 33.161° (internally converted to approximately 1.745 rad)
+
+Each execution displays
+
+- Selected angle mode
+- Input angle in radians
+- FPGA-computed SIN
+- FPGA-computed COS
+- FPGA-computed TAN
+- Expected mathematical values
+- Numerical comparison between hardware and software results
+
+These examples verify that the firmware correctly converts, transmits, and retrieves radian-based CORDIC computations from the FPGA.
 
 ---
 
 # Purpose
 
-These screenshots provide visual verification of
+The screenshots contained in this directory demonstrate
 
-- FPGA-based CORDIC computation
-- BPSK modulation
-- QPSK modulation
-- Carrier generation
-- Waveform visualization
-- Constellation diagrams
-- GUI functionality
-- RP2040 firmware communication
-- End-to-end hardware operation
+- Successful RP2040 ↔ FPGA SPI communication
+- Standalone firmware verification
+- Degree-mode CORDIC computation
+- Radian-mode CORDIC computation
+- Comparison of FPGA results with software reference values
+- Numerical validation of SIN, COS, and TAN before GUI integration
