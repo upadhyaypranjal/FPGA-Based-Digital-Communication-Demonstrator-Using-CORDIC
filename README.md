@@ -8,7 +8,7 @@
 
 ## Overview
 
-This project presents an **FPGA-Based CORDIC Digital Communication Demonstrator** implementing **BPSK** and **QPSK** modulation on the **Vicharak Shrike Lite** development board featuring the **Renesas ForgeFPGA SLG47910**. The system computes **sine**, **cosine**, and **tangent** entirely in hardware using the **CORDIC (COordinate Rotation DIgital Computer)** algorithm, eliminating the need for hardware multipliers.
+This project presents an **FPGA-Based CORDIC Digital Communication Demonstrator** implementing **BPSK** and **QPSK** modulation on the **Vicharak Shrike Lite** development board featuring the **Renesas ForgeFPGA SLG47910**. The system computes **sine**, **cosine**, and **tangent** entirely in hardware using the **CORDIC (Coordinate Rotation Digital Computer)** algorithm, eliminating the need for hardware multipliers.
 
 The implementation employs **16-bit signed fixed-point (Q1.14)** arithmetic with an **8-iteration CORDIC rotation engine** for sine and cosine generation, followed by a **6-iteration linear divider** for tangent computation. The FPGA performs all mathematical processing, while the on-board RP2040 acts solely as a USB-to-SPI communication bridge between the Python GUI and the FPGA.
 
